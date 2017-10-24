@@ -1,0 +1,19 @@
+.link {
+  stroke: #999;
+  stroke-opacity: 0.25;
+}
+
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.node-selected {
+  stroke: black;
+  stroke-width: 2px;
+}
+
+.link-selected {
+  stroke:black;
+  stroke-opacity: 1;
+}

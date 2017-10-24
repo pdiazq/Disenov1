@@ -5,10 +5,7 @@ var svg = d3.select("svg"),
     width = +svg.attr("width"),
     height = +svg.attr("height");
 
-var div = d3.select("body")
-            .append("div")
-            .attr("class", "tooltip")
-            .style("opacity", 0);
+var info = d3.select("#info");
 
 var color = d3.scaleSequential(d3.interpolateCool)
               .domain([0, 10])
@@ -59,7 +56,7 @@ d3.json("./data/data.json", function(error, graph) {
       });
       d3.select(`#${d.key}`).classed("link-selected", true);
     })
-    .on("mouseout", d=> {
+    .on("mouseout", d => {
       node.classed("node-selected", false);
       d3.select(`#${d.key}`).classed("link-selected", false);
     });
@@ -67,6 +64,7 @@ d3.json("./data/data.json", function(error, graph) {
   node
     .on("mouseover", d => {
       d3.select(`#${d.id}`).classed("node-selected", true);
+      /* info.html("");*/
       d.most_similar.forEach(
         s => {
           d3.select(`#${s}`).classed("node-selected", true);
@@ -75,7 +73,7 @@ d3.json("./data/data.json", function(error, graph) {
         }
       );
     })
-    .on("mouseout", d=> {
+    .on("mouseout", d => {
       d3.select(`#${d.id}`).classed("node-selected", false);
       d.most_similar.forEach(
         s => {
@@ -83,6 +81,40 @@ d3.json("./data/data.json", function(error, graph) {
           var key = s < d.id ? s + d.id : d.id + s;
           d3.select(`#${key}`).classed("link-selected", false);
         }
+      );
+    })
+    .on("click", d => {
+      var ms0 = d.most_similar[0];
+      ms0 = d3.select("#" + (ms0 < d.id ? ms0 + d.id : d.id + ms0)).datum();
+      sim0 = Math.round(100 * ms0.value) / 100;
+      ms0 = ms0.source == d ? ms0.target : ms0.source;
+
+      var ms1 = d.most_similar[1];
+      ms1 = d3.select("#" + (ms1 < d.id ? ms1 + d.id : d.id + ms1)).datum();
+      sim1 = Math.round(100 * ms1.value) / 100;
+      ms1 = ms1.source == d ? ms1.target : ms1.source;
+
+      info.html(
+        '<div class="text-center">' +
+        `<h2 class="text-center">${d.id}</h2>` +
+        `<img src="img/${d.image_url}" width="100" class="img-circle"/></br></br>` +
+        `<p>tiene interés por ${d.group} lenguajes: </br>${d.all_langs}</p>` +
+        `<p>tiene intereses en común con</p>` +
+        `<div class="row">` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms0.id}</h3>` +
+        `<img src="img/${ms0.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim0}</p>` +
+        `  <p>Lenguajes:${ms0.all_langs}</p>` +
+        ` </div>` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms1.id}</h3>` +
+        `<img src="img/${ms1.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim1}</p>` +
+        `  <p>Lenguajes:${ms1.all_langs}</p>` +
+        ` </div>` +
+        `</div>` +
+        '</div>'
       );
     });
 
