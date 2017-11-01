@@ -1,19 +1,45 @@
-.link {
-  stroke: #999;
-  stroke-opacity: 0.25;
+<style>
+
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  margin: 0;
 }
 
-.node {
-  stroke: #fff;
+#show-length {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.links {
+  fill: none;
+  stroke: #000;
+}
+
+.link-extensions {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: .25;
+}
+
+.labels {
+  font: 10px sans-serif;
+}
+
+.link--active {
+  stroke: #000 !important;
   stroke-width: 1.5px;
 }
 
-.node-selected {
-  stroke: black;
-  stroke-width: 2px;
+.link-extension--active {
+  stroke-opacity: .6;
 }
 
-.link-selected {
-  stroke:black;
-  stroke-opacity: 1;
+.label--active {
+  font-weight: bold;
 }
+
+</style>
+<label id="show-length">
+  <input type="checkbox"> Show branch length
+</label>
