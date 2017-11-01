@@ -1,156 +1,203 @@
-const r = 12.5,
-      f = 50;
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
 
-var svg = d3.select("svg"),
-    width = +svg.attr("width"),
-    height = +svg.attr("height");
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  margin: 0;
+}
 
-var info = d3.select("#info");
+#show-length {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
 
-var color = d3.scaleSequential(d3.interpolateCool)
-              .domain([0, 10])
+.links {
+  fill: none;
+  stroke: #000;
+}
 
-var simulation = d3.forceSimulation()
-                   .force("link",
-                          d3.forceLink()
-                            .id(d => d.id)
-                            .distance(d => f*(1/d.value))
-                            .strength(1)
-                   )
-                   .force("collide", d3.forceCollide().radius(r + 0.5).iterations(1))
-                   .force("charge", d3.forceManyBody())
-                   .force("center", d3.forceCenter(width / 2, height / 2));
+.link-extensions {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: .25;
+}
 
-d3.json("./data/data.json", function(error, graph) {
+.labels {
+  font: 10px sans-serif;
+}
+
+.link--active {
+  stroke: #000 !important;
+  stroke-width: 1.5px;
+}
+
+.link-extension--active {
+  stroke-opacity: .6;
+}
+
+.label--active {
+  font-weight: bold;
+}
+
+</style>
+<label id="show-length">
+  <input type="checkbox"> Show branch length
+</label>
+
+<!-- Copyright 2011 Jason Davies https://github.com/jasondavies/newick.js -->
+<script>function parseNewick(a){for(var e=[],r={},s=a.split(/\s*(;|\(|\)|,|:)\s*/),t=0;t<s.length;t++){var n=s[t];switch(n){case"(":var c={};r.branchset=[c],e.push(r),r=c;break;case",":var c={};e[e.length-1].branchset.push(c),r=c;break;case")":r=e.pop();break;case":":break;default:var h=s[t-1];")"==h||"("==h||","==h?r.name=n:":"==h&&(r.length=parseFloat(n))}}return r}</script>
+
+<!-- Copyright 2016 Mike Bostock https://d3js.org -->
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+var outerRadius = 960 / 2,
+    innerRadius = outerRadius - 170;
+
+var color = d3.scaleOrdinal()
+    .domain(["Bacteria", "Eukaryota", "Archaea"])
+    .range(d3.schemeCategory10);
+
+var cluster = d3.cluster()
+    .size([360, innerRadius])
+    .separation(function(a, b) { return 1; });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", outerRadius * 2)
+    .attr("height", outerRadius * 2);
+
+var legend = svg.append("g")
+    .attr("class", "legend")
+  .selectAll("g")
+  .data(color.domain())
+  .enter().append("g")
+    .attr("transform", function(d, i) { return "translate(" + (outerRadius * 2 - 10) + "," + (i * 20 + 10) + ")"; });
+
+legend.append("rect")
+    .attr("x", -18)
+    .attr("width", 18)
+    .attr("height", 18)
+    .attr("fill", color);
+
+legend.append("text")
+    .attr("x", -24)
+    .attr("y", 9)
+    .attr("dy", ".35em")
+    .attr("text-anchor", "end")
+    .text(function(d) { return d; });
+
+var chart = svg.append("g")
+    .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
+
+d3.text("life.txt", function(error, life) {
   if (error) throw error;
 
-  var link = svg.append("g")
-                .attr("class", "links")
-                .selectAll("line")
-                .data(graph.links)
-                .enter().append("line")
-                .classed("link", true)
-                .attr("id", d => d.key)
-                .attr("stroke-width", d => d.value*15);
+  var root = d3.hierarchy(parseNewick(life), function(d) { return d.branchset; })
+      .sum(function(d) { return d.branchset ? 0 : 1; })
+      .sort(function(a, b) { return (a.value - b.value) || d3.ascending(a.data.length, b.data.length); });
 
-  var node = svg.append("g")
-                .attr("class", "nodes")
-                .selectAll("circle")
-                .data(graph.nodes)
-                .enter().append("circle")
-                .classed("node", true)
-                .attr("id", d => d.id)
-                .attr("r", r)
-                .attr("fill", d => color(d.group))
-                .call(d3.drag()
-                        .on("start", dragstarted)
-                        .on("drag", dragged)
-                        .on("end", dragended));
+  cluster(root);
 
-  node.append("svg:title").text(d => d.id);
+  var input = d3.select("#show-length input").on("change", changed),
+      timeout = setTimeout(function() { input.property("checked", true).each(changed); }, 2000);
 
-  link
-    .on("mouseover", d => {
-      node.classed("node-selected", n => {
-        return (n == d.source  || n == d.target) ? true : false;
-      });
-      d3.select(`#${d.key}`).classed("link-selected", true);
-    })
-    .on("mouseout", d => {
-      node.classed("node-selected", false);
-      d3.select(`#${d.key}`).classed("link-selected", false);
-    });
+  setRadius(root, root.data.length = 0, innerRadius / maxLength(root));
+  setColor(root);
 
-  node
-    .on("mouseover", d => {
-      d3.select(`#${d.id}`).classed("node-selected", true);
-      /* info.html("");*/
-      d.most_similar.forEach(
-        s => {
-          d3.select(`#${s}`).classed("node-selected", true);
-          var key = s < d.id ? s + d.id : d.id + s;
-          d3.select(`#${key}`).classed("link-selected", true);
-        }
-      );
-    })
-    .on("mouseout", d => {
-      d3.select(`#${d.id}`).classed("node-selected", false);
-      d.most_similar.forEach(
-        s => {
-          d3.select(`#${s}`).classed("node-selected", false);
-          var key = s < d.id ? s + d.id : d.id + s;
-          d3.select(`#${key}`).classed("link-selected", false);
-        }
-      );
-    })
-    .on("click", d => {
-      var ms0 = d.most_similar[0];
-      ms0 = d3.select("#" + (ms0 < d.id ? ms0 + d.id : d.id + ms0)).datum();
-      sim0 = Math.round(100 * ms0.value) / 100;
-      ms0 = ms0.source == d ? ms0.target : ms0.source;
+  var linkExtension = chart.append("g")
+      .attr("class", "link-extensions")
+    .selectAll("path")
+    .data(root.links().filter(function(d) { return !d.target.children; }))
+    .enter().append("path")
+      .each(function(d) { d.target.linkExtensionNode = this; })
+      .attr("d", linkExtensionConstant);
 
-      var ms1 = d.most_similar[1];
-      ms1 = d3.select("#" + (ms1 < d.id ? ms1 + d.id : d.id + ms1)).datum();
-      sim1 = Math.round(100 * ms1.value) / 100;
-      ms1 = ms1.source == d ? ms1.target : ms1.source;
+  var link = chart.append("g")
+      .attr("class", "links")
+    .selectAll("path")
+    .data(root.links())
+    .enter().append("path")
+      .each(function(d) { d.target.linkNode = this; })
+      .attr("d", linkConstant)
+      .attr("stroke", function(d) { return d.target.color; });
 
-      info.html(
-        '<div class="text-center">' +
-        `<h2 class="text-center">${d.id}</h2>` +
-        `<img src="img/${d.image_url}" width="100" class="img-circle"/></br></br>` +
-        `<p>tiene interés por ${d.group} lenguajes: </br>${d.all_langs.join(', ')}</p>` +
-        `<p>tiene intereses en común con</p>` +
-        `<div class="row">` +
-        ` <div class="col-md-6">` +
-        `  <h3>${ms0.id}</h3>` +
-        `<img src="img/${ms0.image_url}" width="100" class="img-circle"/></br></br>` +
-        `  <p>Similitud:${sim0}</p>` +
-        `  <p>Lenguajes: ${ms0.all_langs.join(', ')}</p>` +
-        ` </div>` +
-        ` <div class="col-md-6">` +
-        `  <h3>${ms1.id}</h3>` +
-        `<img src="img/${ms1.image_url}" width="100" class="img-circle"/></br></br>` +
-        `  <p>Similitud:${sim1}</p>` +
-        `  <p>Lenguajes: ${ms1.all_langs.join(', ')}</p>` +
-        ` </div>` +
-        `</div>` +
-        '</div>'
-      );
-    });
+  chart.append("g")
+      .attr("class", "labels")
+    .selectAll("text")
+    .data(root.leaves())
+    .enter().append("text")
+      .attr("dy", ".31em")
+      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + (innerRadius + 4) + ",0)" + (d.x < 180 ? "" : "rotate(180)"); })
+      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+      .text(function(d) { return d.data.name.replace(/_/g, " "); })
+      .on("mouseover", mouseovered(true))
+      .on("mouseout", mouseovered(false));
 
-  simulation
-    .nodes(graph.nodes)
-    .on("tick", ticked);
+  function changed() {
+    clearTimeout(timeout);
+    var t = d3.transition().duration(750);
+    linkExtension.transition(t).attr("d", this.checked ? linkExtensionVariable : linkExtensionConstant);
+    link.transition(t).attr("d", this.checked ? linkVariable : linkConstant);
+  }
 
-  simulation.force("link")
-            .links(graph.links);
+  function mouseovered(active) {
+    return function(d) {
+      d3.select(this).classed("label--active", active);
+      d3.select(d.linkExtensionNode).classed("link-extension--active", active).each(moveToFront);
+      do d3.select(d.linkNode).classed("link--active", active).each(moveToFront); while (d = d.parent);
+    };
+  }
 
-  function ticked() {
-    link
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
-
-    node
-      .attr("cx", d => d.x)
-      .attr("cy", d => d.y);
+  function moveToFront() {
+    this.parentNode.appendChild(this);
   }
 });
 
-function dragstarted(d) {
-  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-  d.fx = d.x;
-  d.fy = d.y;
+// Compute the maximum cumulative length of any node in the tree.
+function maxLength(d) {
+  return d.data.length + (d.children ? d3.max(d.children, maxLength) : 0);
 }
 
-function dragged(d) {
-  d.fx = d3.event.x;
-  d.fy = d3.event.y;
+// Set the radius of each node by recursively summing and scaling the distance from the root.
+function setRadius(d, y0, k) {
+  d.radius = (y0 += d.data.length) * k;
+  if (d.children) d.children.forEach(function(d) { setRadius(d, y0, k); });
 }
 
-function dragended(d) {
-  if (!d3.event.active) simulation.alphaTarget(0);
-  d.fx = null;
-  d.fy = null;
+// Set the color of each node by recursively inheriting.
+function setColor(d) {
+  var name = d.data.name;
+  d.color = color.domain().indexOf(name) >= 0 ? color(name) : d.parent ? d.parent.color : null;
+  if (d.children) d.children.forEach(setColor);
 }
+
+function linkVariable(d) {
+  return linkStep(d.source.x, d.source.radius, d.target.x, d.target.radius);
+}
+
+function linkConstant(d) {
+  return linkStep(d.source.x, d.source.y, d.target.x, d.target.y);
+}
+
+function linkExtensionVariable(d) {
+  return linkStep(d.target.x, d.target.radius, d.target.x, innerRadius);
+}
+
+function linkExtensionConstant(d) {
+  return linkStep(d.target.x, d.target.y, d.target.x, innerRadius);
+}
+
+// Like d3.svg.diagonal.radial, but with square corners.
+function linkStep(startAngle, startRadius, endAngle, endRadius) {
+  var c0 = Math.cos(startAngle = (startAngle - 90) / 180 * Math.PI),
+      s0 = Math.sin(startAngle),
+      c1 = Math.cos(endAngle = (endAngle - 90) / 180 * Math.PI),
+      s1 = Math.sin(endAngle);
+  return "M" + startRadius * c0 + "," + startRadius * s0
+      + (endAngle === startAngle ? "" : "A" + startRadius + "," + startRadius + " 0 0 " + (endAngle > startAngle ? 1 : 0) + " " + startRadius * c1 + "," + startRadius * s1)
+      + "L" + endRadius * c1 + "," + endRadius * s1;
+}
+
+</script>
