@@ -1,48 +1,3 @@
-<!DOCTYPE html>
-<meta charset="utf-8">
-<style>
-body {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  margin: 0;
-}
-#show-length {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-}
-.links {
-  fill: none;
-  stroke: #000;
-}
-.link-extensions {
-  fill: none;
-  stroke: #000;
-  stroke-opacity: .25;
-}
-.labels {
-  font: 10px sans-serif;
-}
-.link--active {
-  stroke: #000 !important;
-  stroke-width: 1.5px;
-}
-.link-extension--active {
-  stroke-opacity: .6;
-}
-.label--active {
-  font-weight: bold;
-}
-</style>
-<label id="show-length">
-  <input type="checkbox"> Show branch length
-</label>
-
-<!-- Copyright 2011 Jason Davies https://github.com/jasondavies/newick.js -->
-<script>function parseNewick(a){for(var e=[],r={},s=a.split(/\s*(;|\(|\)|,|:)\s*/),t=0;t<s.length;t++){var n=s[t];switch(n){case"(":var c={};r.branchset=[c],e.push(r),r=c;break;case",":var c={};e[e.length-1].branchset.push(c),r=c;break;case")":r=e.pop();break;case":":break;default:var h=s[t-1];")"==h||"("==h||","==h?r.name=n:":"==h&&(r.length=parseFloat(n))}}return r}</script>
-
-<!-- Copyright 2016 Mike Bostock https://d3js.org -->
-<script src="https://d3js.org/d3.v4.min.js"></script>
-<script>
 var outerRadius = 960 / 2,
     innerRadius = outerRadius - 170;
 var color = d3.scaleOrdinal()
@@ -73,7 +28,7 @@ legend.append("text")
     .text(function(d) { return d; });
 var chart = svg.append("g")
     .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
-d3.text("life.txt"><", function(error, life) {
+d3.text("life.txt", function(error, life) {
   if (error) throw error;
   var root = d3.hierarchy(parseNewick(life), function(d) { return d.branchset; })
       .sum(function(d) { return d.branchset ? 0 : 1; })
@@ -163,4 +118,3 @@ function linkStep(startAngle, startRadius, endAngle, endRadius) {
       + (endAngle === startAngle ? "" : "A" + startRadius + "," + startRadius + " 0 0 " + (endAngle > startAngle ? 1 : 0) + " " + startRadius * c1 + "," + startRadius * s1)
       + "L" + endRadius * c1 + "," + endRadius * s1;
 }
-</script>
