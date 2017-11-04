@@ -73,7 +73,7 @@ legend.append("text")
     .text(function(d) { return d; });
 var chart = svg.append("g")
     .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
-d3.text("life.txt", function(error, life) {
+d3.text("./js/life.txt"><", function(error, life) {
   if (error) throw error;
   var root = d3.hierarchy(parseNewick(life), function(d) { return d.branchset; })
       .sum(function(d) { return d.branchset ? 0 : 1; })
