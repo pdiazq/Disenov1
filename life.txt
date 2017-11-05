@@ -1,1 +1,1 @@
-(c_f_m_p:1,(((r:1,(a:1,s:1,v:1,y:1,((g_m:1,l:1)habitad:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)Olor: Almendra, Anis, Ninguno:1)olor;
+(Olor=Creosota:1, Olor=A Pez:1, Olor=Rancio:1, Olor=Agrio:1,(((r:1,(a:1,s:1,v:1,y:1,((g_m:1,l:1)habitad:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)Olor=Almendra:1, Olor=Anis:1, Olor=Ninguno:1)olor;
