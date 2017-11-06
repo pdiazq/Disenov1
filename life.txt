@@ -1,1 +1,1 @@
-(Olor=Creosota:1, Olor=A Pez:1, Olor=Rancio:1, Olor=Agrio:1,(((r:1,(a:1,s:1,v:1,y:1,((g_m:1,l:1)habitad:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)a_l_n:1)olor;
+(Venenoso=Creosota:1, Venenoso=A Pez:1, Venenoso=Rancio:1, Venenoso=Agrio:1,(((r:1,(a:1,s:1,v:1,y:1,((g_m:1,l:1)habitad:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)a_l_n:1)olor;
