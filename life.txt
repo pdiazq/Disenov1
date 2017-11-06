@@ -1,1 +1,1 @@
-((+_+)Creosota:1, (+_+)A Pez:1, (+_+)Rancio:1, (+_+)Agrio:1,((((+_+)Verde:1,(＼(^-^)／Abundante:1,＼(^-^)／Dispersa:1,＼(^-^)／Por grupos:1, ＼(^-^)／Solitarios:1,((＼(^-^)／Hierbas:1, ＼(^-^)／Prados:1,(+_+)hojas:1)habitat:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)a_l_n:1)olor;
+({+_+}Creosota:1, {+_+}A Pez:1, {+_+}Rancio:1, {+_+}Agrio:1,((({+_+}Verde:1,(＼{^-^}／Abundante:1,＼{^-^}／Dispersa:1,＼{^-^}／Por grupos:1, ＼{^-^}／Solitarios:1,((＼{^-^}／Hierbas:1, ＼{^-^}／Prados:1,{+_+}hojas:1)habitat:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)a_l_n:1)olor;
