@@ -1,1 +1,1 @@
-(Venenoso=Creosota:1, Venenoso=A Pez:1, Venenoso=Rancio:1, Venenoso=Agrio:1,(((r:1,(a:1,s:1,v:1,y:1,((Comestible=Hierbas:1, Comestible=Prados:1,Venenoso=hojas:1)habitat:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)a_l_n:1)olor;
+(Venenoso=Creosota:1, Venenoso=A Pez:1, Venenoso=Rancio:1, Venenoso=Agrio:1,(((r:1,(Abundante:1,Dispersa:1,Por Por grupos:1, Solitarios:1,((Comestible=Hierbas:1, Comestible=Prados:1,Venenoso=hojas:1)habitat:1)c_n:1)poblacion:1)k_n_v_w:1)color_esporas:1)a_l_n:1)olor;
