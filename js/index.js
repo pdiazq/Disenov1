@@ -1,120 +1,156 @@
-var outerRadius = 960 / 2,
-    innerRadius = outerRadius - 170;
-var color = d3.scaleOrdinal()
-    .domain(["olor", "color_esporas", "poblacion", "habitad"])
-    .range(d3.schemeCategory10);
-var cluster = d3.cluster()
-    .size([360, innerRadius])
-    .separation(function(a, b) { return 1; });
-var svg = d3.select("body").append("svg")
-    .attr("width", outerRadius * 2)
-    .attr("height", outerRadius * 2);
-var legend = svg.append("g")
-    .attr("class", "legend")
-  .selectAll("g")
-  .data(color.domain())
-  .enter().append("g")
-    .attr("transform", function(d, i) { return "translate(" + (outerRadius * 2 - 10) + "," + (i * 20 + 10) + ")"; });
-legend.append("rect")
-    .attr("x", -18)
-    .attr("width", 18)
-    .attr("height", 18)
-    .attr("fill", color);
-legend.append("text")
-    .attr("x", -24)
-    .attr("y", 9)
-    .attr("dy", ".35em")
-    .attr("text-anchor", "end")
-    .text(function(d) { return d; });
-var chart = svg.append("g")
-    .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
-d3.text("life.txt", function(error, life) {
+const r = 12.5,
+      f = 50;
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var info = d3.select("#info");
+
+var color = d3.scaleSequential(d3.interpolateCool)
+              .domain([0, 10])
+
+var simulation = d3.forceSimulation()
+                   .force("link",
+                          d3.forceLink()
+                            .id(d => d.id)
+                            .distance(d => f*(1/d.value))
+                            .strength(1)
+                   )
+                   .force("collide", d3.forceCollide().radius(r + 0.5).iterations(1))
+                   .force("charge", d3.forceManyBody())
+                   .force("center", d3.forceCenter(width / 2, height / 2));
+
+d3.json("./data/data.json", function(error, graph) {
   if (error) throw error;
-  var root = d3.hierarchy(parseNewick(life), function(d) { return d.branchset; })
-      .sum(function(d) { return d.branchset ? 0 : 1; })
-      .sort(function(a, b) { return (a.value - b.value) || d3.ascending(a.data.length, b.data.length); });
-  cluster(root);
-  var input = d3.select("#show-length input").on("change", changed),
-      timeout = setTimeout(function() { input.property("checked", true).each(changed); }, 2000);
-  setRadius(root, root.data.length = 0, innerRadius / maxLength(root));
-  setColor(root);
-  var linkExtension = chart.append("g")
-      .attr("class", "link-extensions")
-    .selectAll("path")
-    .data(root.links().filter(function(d) { return !d.target.children; }))
-    .enter().append("path")
-      .each(function(d) { d.target.linkExtensionNode = this; })
-      .attr("d", linkExtensionConstant);
-  var link = chart.append("g")
-      .attr("class", "links")
-    .selectAll("path")
-    .data(root.links())
-    .enter().append("path")
-      .each(function(d) { d.target.linkNode = this; })
-      .attr("d", linkConstant)
-      .attr("stroke", function(d) { return d.target.color; });
-  chart.append("g")
-      .attr("class", "labels")
-    .selectAll("text")
-    .data(root.leaves())
-    .enter().append("text")
-      .attr("dy", ".31em")
-      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + (innerRadius + 4) + ",0)" + (d.x < 180 ? "" : "rotate(180)"); })
-      .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
-      .text(function(d) { return d.data.name.replace(/_/g, " "); })
-      .on("mouseover", mouseovered(true))
-      .on("mouseout", mouseovered(false));
-  function changed() {
-    clearTimeout(timeout);
-    var t = d3.transition().duration(750);
-    linkExtension.transition(t).attr("d", this.checked ? linkExtensionVariable : linkExtensionConstant);
-    link.transition(t).attr("d", this.checked ? linkVariable : linkConstant);
-  }
-  function mouseovered(active) {
-    return function(d) {
-      d3.select(this).classed("label--active", active);
-      d3.select(d.linkExtensionNode).classed("link-extension--active", active).each(moveToFront);
-      do d3.select(d.linkNode).classed("link--active", active).each(moveToFront); while (d = d.parent);
-    };
-  }
-  function moveToFront() {
-    this.parentNode.appendChild(this);
+
+  var link = svg.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(graph.links)
+                .enter().append("line")
+                .classed("link", true)
+                .attr("id", d => d.key)
+                .attr("stroke-width", d => d.value*15);
+
+  var node = svg.append("g")
+                .attr("class", "nodes")
+                .selectAll("circle")
+                .data(graph.nodes)
+                .enter().append("circle")
+                .classed("node", true)
+                .attr("id", d => d.id)
+                .attr("r", r)
+                .attr("fill", d => color(d.group))
+                .call(d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended));
+
+  node.append("svg:title").text(d => d.id);
+
+  link
+    .on("mouseover", d => {
+      node.classed("node-selected", n => {
+        return (n == d.source  || n == d.target) ? true : false;
+      });
+      d3.select(`#${d.key}`).classed("link-selected", true);
+    })
+    .on("mouseout", d => {
+      node.classed("node-selected", false);
+      d3.select(`#${d.key}`).classed("link-selected", false);
+    });
+
+  node
+    .on("mouseover", d => {
+      d3.select(`#${d.id}`).classed("node-selected", true);
+      /* info.html("");*/
+      d.most_similar.forEach(
+        s => {
+          d3.select(`#${s}`).classed("node-selected", true);
+          var key = s < d.id ? s + d.id : d.id + s;
+          d3.select(`#${key}`).classed("link-selected", true);
+        }
+      );
+    })
+    .on("mouseout", d => {
+      d3.select(`#${d.id}`).classed("node-selected", false);
+      d.most_similar.forEach(
+        s => {
+          d3.select(`#${s}`).classed("node-selected", false);
+          var key = s < d.id ? s + d.id : d.id + s;
+          d3.select(`#${key}`).classed("link-selected", false);
+        }
+      );
+    })
+    .on("click", d => {
+      var ms0 = d.most_similar[0];
+      ms0 = d3.select("#" + (ms0 < d.id ? ms0 + d.id : d.id + ms0)).datum();
+      sim0 = Math.round(100 * ms0.value) / 100;
+      ms0 = ms0.source == d ? ms0.target : ms0.source;
+
+      var ms1 = d.most_similar[1];
+      ms1 = d3.select("#" + (ms1 < d.id ? ms1 + d.id : d.id + ms1)).datum();
+      sim1 = Math.round(100 * ms1.value) / 100;
+      ms1 = ms1.source == d ? ms1.target : ms1.source;
+
+      info.html(
+        '<div class="text-center">' +
+        `<h2 class="text-center">${d.id}</h2>` +
+        `<img src="img/${d.image_url}" width="100" class="img-circle"/></br></br>` +
+        `<p>tiene interés por ${d.group} lenguajes: </br>${d.all_langs.join(', ')}</p>` +
+        `<p>tiene intereses en común con</p>` +
+        `<div class="row">` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms0.id}</h3>` +
+        `<img src="img/${ms0.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim0}</p>` +
+        `  <p>Lenguajes: ${ms0.all_langs.join(', ')}</p>` +
+        ` </div>` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms1.id}</h3>` +
+        `<img src="img/${ms1.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim1}</p>` +
+        `  <p>Lenguajes: ${ms1.all_langs.join(', ')}</p>` +
+        ` </div>` +
+        `</div>` +
+        '</div>'
+      );
+    });
+
+  simulation
+    .nodes(graph.nodes)
+    .on("tick", ticked);
+
+  simulation.force("link")
+            .links(graph.links);
+
+  function ticked() {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    node
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
   }
 });
-// Compute the maximum cumulative length of any node in the tree.
-function maxLength(d) {
-  return d.data.length + (d.children ? d3.max(d.children, maxLength) : 0);
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
 }
-// Set the radius of each node by recursively summing and scaling the distance from the root.
-function setRadius(d, y0, k) {
-  d.radius = (y0 += d.data.length) * k;
-  if (d.children) d.children.forEach(function(d) { setRadius(d, y0, k); });
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
 }
-// Set the color of each node by recursively inheriting.
-function setColor(d) {
-  var name = d.data.name;
-  d.color = color.domain().indexOf(name) >= 0 ? color(name) : d.parent ? d.parent.color : null;
-  if (d.children) d.children.forEach(setColor);
-}
-function linkVariable(d) {
-  return linkStep(d.source.x, d.source.radius, d.target.x, d.target.radius);
-}
-function linkConstant(d) {
-  return linkStep(d.source.x, d.source.y, d.target.x, d.target.y);
-}
-function linkExtensionVariable(d) {
-  return linkStep(d.target.x, d.target.radius, d.target.x, innerRadius);
-}
-function linkExtensionConstant(d) {
-  return linkStep(d.target.x, d.target.y, d.target.x, innerRadius);
-}
-// Like d3.svg.diagonal.radial, but with square corners.
-function linkStep(startAngle, startRadius, endAngle, endRadius) {
-  var c0 = Math.cos(startAngle = (startAngle - 90) / 180 * Math.PI),
-      s0 = Math.sin(startAngle),
-      c1 = Math.cos(endAngle = (endAngle - 90) / 180 * Math.PI),
-      s1 = Math.sin(endAngle);
-  return "M" + startRadius * c0 + "," + startRadius * s0
-      + (endAngle === startAngle ? "" : "A" + startRadius + "," + startRadius + " 0 0 " + (endAngle > startAngle ? 1 : 0) + " " + startRadius * c1 + "," + startRadius * s1)
-      + "L" + endRadius * c1 + "," + endRadius * s1;
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
 }
