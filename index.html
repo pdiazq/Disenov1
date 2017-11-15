@@ -130,6 +130,30 @@ d3.json("./data/data.json", function(error, graph) {
       ms1 = ms1.source == d ? ms1.target : ms1.source;
 
 
+      info.html(
+        '<div class="text-center">' +
+        `<h2 class="text-center">${d.id}</h2>` +
+        `<img src="img/${d.image_url}" width="100" class="img-circle"/></br></br>` +
+        `<p>tiene interés por ${d.group} lenguajes: </br>${d.all_langs.join(', ')}</p>` +
+        `<p>tiene intereses en común con</p>` +
+        `<div class="row">` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms0.id}</h3>` +
+        `<img src="img/${ms0.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim0}</p>` +
+        `  <p>Lenguajes: ${ms0.all_langs.join(', ')}</p>` +
+        ` </div>` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms1.id}</h3>` +
+        `<img src="img/${ms1.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim1}</p>` +
+        `  <p>Lenguajes: ${ms1.all_langs.join(', ')}</p>` +
+        ` </div>` +
+        `</div>` +
+        '</div>'
+      );
+    });
+    
   simulation
     .nodes(graph.nodes)
     .on("tick", ticked);
