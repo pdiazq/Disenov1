@@ -1,26 +1,156 @@
-<!DOCTYPE html>
-<html>
-  <meta charset="utf-8">
-  <head>
-    <link href="./css/style.css" rel="stylesheet" type="text/css"/>
-    <!-- Latest compiled and minified CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
-          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-  </head>
-  <body>
-    <div class="container">
-      <div class="page-header">
-        <h1>Looking for similar mates <small>(I, -zombiefungus- found them)</small></h1>
-      </div>
-      <div class="col-md-6">
-        <svg width="760" height="550"></svg>
-      </div>
-      <div class="col-md-6">
-        <div id="info">
-        </div>
-      </div>
-      <script src="https://d3js.org/d3.v4.min.js"></script>
-      <script src="./js/index.js"></script>
-    </div>
-  </body>
-</html>
+const r = 12.5,
+      f = 50;
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var info = d3.select("#info");
+
+var color = d3.scaleSequential(d3.interpolateCool)
+              .domain([0, 10])
+
+var simulation = d3.forceSimulation()
+                   .force("link",
+                          d3.forceLink()
+                            .id(d => d.id)
+                            .distance(d => f*(1/d.value))
+                            .strength(1)
+                   )
+                   .force("collide", d3.forceCollide().radius(r + 0.5).iterations(1))
+                   .force("charge", d3.forceManyBody())
+                   .force("center", d3.forceCenter(width / 2, height / 2));
+
+d3.json("./data/data.json", function(error, graph) {
+  if (error) throw error;
+
+  var link = svg.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(graph.links)
+                .enter().append("line")
+                .classed("link", true)
+                .attr("id", d => d.key)
+                .attr("stroke-width", d => d.value*15);
+
+  var node = svg.append("g")
+                .attr("class", "nodes")
+                .selectAll("circle")
+                .data(graph.nodes)
+                .enter().append("circle")
+                .classed("node", true)
+                .attr("id", d => d.id)
+                .attr("r", r)
+                .attr("fill", d => color(d.group))
+                .call(d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended));
+
+  node.append("svg:title").text(d => d.id);
+
+  link
+    .on("mouseover", d => {
+      node.classed("node-selected", n => {
+        return (n == d.source  || n == d.target) ? true : false;
+      });
+      d3.select(`#${d.key}`).classed("link-selected", true);
+    })
+    .on("mouseout", d => {
+      node.classed("node-selected", false);
+      d3.select(`#${d.key}`).classed("link-selected", false);
+    });
+
+  node
+    .on("mouseover", d => {
+      d3.select(`#${d.id}`).classed("node-selected", true);
+      /* info.html("");*/
+      d.most_similar.forEach(
+        s => {
+          d3.select(`#${s}`).classed("node-selected", true);
+          var key = s < d.id ? s + d.id : d.id + s;
+          d3.select(`#${key}`).classed("link-selected", true);
+        }
+      );
+    })
+    .on("mouseout", d => {
+      d3.select(`#${d.id}`).classed("node-selected", false);
+      d.most_similar.forEach(
+        s => {
+          d3.select(`#${s}`).classed("node-selected", false);
+          var key = s < d.id ? s + d.id : d.id + s;
+          d3.select(`#${key}`).classed("link-selected", false);
+        }
+      );
+    })
+    .on("click", d => {
+      var ms0 = d.most_similar[0];
+      ms0 = d3.select("#" + (ms0 < d.id ? ms0 + d.id : d.id + ms0)).datum();
+      sim0 = Math.round(100 * ms0.value) / 100;
+      ms0 = ms0.source == d ? ms0.target : ms0.source;
+
+      var ms1 = d.most_similar[1];
+      ms1 = d3.select("#" + (ms1 < d.id ? ms1 + d.id : d.id + ms1)).datum();
+      sim1 = Math.round(100 * ms1.value) / 100;
+      ms1 = ms1.source == d ? ms1.target : ms1.source;
+
+      info.html(
+        '<div class="text-center">' +
+        `<h2 class="text-center">${d.id}</h2>` +
+        `<img src="img/${d.image_url}" width="100" class="img-circle"/></br></br>` +
+        `<p>tiene interés por ${d.group} lenguajes: </br>${d.all_langs.join(', ')}</p>` +
+        `<p>tiene intereses en común con</p>` +
+        `<div class="row">` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms0.id}</h3>` +
+        `<img src="img/${ms0.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim0}</p>` +
+        `  <p>Lenguajes: ${ms0.all_langs.join(', ')}</p>` +
+        ` </div>` +
+        ` <div class="col-md-6">` +
+        `  <h3>${ms1.id}</h3>` +
+        `<img src="img/${ms1.image_url}" width="100" class="img-circle"/></br></br>` +
+        `  <p>Similitud:${sim1}</p>` +
+        `  <p>Lenguajes: ${ms1.all_langs.join(', ')}</p>` +
+        ` </div>` +
+        `</div>` +
+        '</div>'
+      );
+    });
+
+  simulation
+    .nodes(graph.nodes)
+    .on("tick", ticked);
+
+  simulation.force("link")
+            .links(graph.links);
+
+  function ticked() {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    node
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+  }
+});
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
